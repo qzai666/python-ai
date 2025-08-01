@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 聊天助手</title>
+</head>
+<body>
+    <h2>AI 聊天助手</h2>
+    <textarea id="userInput" rows="4" cols="50" placeholder="请输入你的问题..."></textarea><br>
+    <button onclick="sendMessage()">发送</button>
+    <pre id="result"></pre>
+    <script>
+        async function sendMessage() {
+            const message = document.getElementById('userInput').value;
+            const res = await fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message})
+            });
+            const data = await res.json();
+            document.getElementById('result').innerText = data.content || JSON.stringify(data, null, 2);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "ai/wsgi.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "ai/wsgi.py"
+    }
+  ],
+  "env": {
+    "DASHSCOPE_API_KEY": "@dashscope_api_key"
+  }
+} 
