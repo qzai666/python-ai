@@ -16,7 +16,7 @@ model = "flux-schnell"
 
 @app.route('/')
 def index():
-    return render_template('chat.html')
+    return render_template('index.html')
 
 @app.route('/generate_image', methods=['POST'])
 def generate_image():
@@ -72,5 +72,5 @@ def internal_error(error):
 
 if __name__ == '__main__':
     # 使用端口 3000 避免端口冲突
-    port = int(os.environ.get('PORT', 3000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    port = int(os.environ.get('PORT', 8888))
+    app.run(host='0.0.0.0', port=port, debug=False) 
