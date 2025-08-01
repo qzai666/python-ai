@@ -71,6 +71,6 @@ def internal_error(error):
     return jsonify({'error': '服务器内部错误'}), 500
 
 if __name__ == '__main__':
-    # 生产环境使用
-    port = int(os.environ.get('PORT', 5001))
+    # 使用端口 3000 避免端口冲突
+    port = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=port, debug=False)
