@@ -95,6 +95,30 @@
             border-radius: 6px;
             margin: 20px 0;
         }
+        .note {
+            color: #666;
+            font-style: italic;
+            margin: 10px 0;
+        }
+
+        #imageContainer {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .image-item button {
+            background: #28a745;
+            padding: 8px 15px;
+            font-size: 14px;
+        }
+
+    .image-item button:hover {
+        background: #218838;
+    }
     </style>
 </head>
 <body>
@@ -115,87 +139,98 @@
     </div>
 
     <script>
-        async function generateImage() {
-            const prompt = document.getElementById('promptInput').value.trim();
-            const generateBtn = document.getElementById('generateBtn');
-            const loading = document.getElementById('loading');
-            const result = document.getElementById('result');
-            
-            if (!prompt) {
-                alert('请输入图片描述');
-                return;
-            }
-            
-            // 显示加载状态
-            generateBtn.disabled = true;
-            loading.style.display = 'block';
-            result.innerHTML = '';
-            
-            try {
-                const response = await fetch('/generate_image', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ prompt: prompt })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // 显示成功信息
-                    result.innerHTML = `
-                        <div class="success">
-                            <h3>✅ 图片生成成功！</h3>
-                            <p>使用情况：${JSON.stringify(data.usage, null, 2)}</p>
-                        </div>
-                    `;
-                    
-                    // 显示生成的图片
-                    const imageContainer = document.createElement('div');
-                    imageContainer.className = 'image-container';
-                    
-                    data.images.forEach((imageUrl, index) => {
-                        const imageItem = document.createElement('div');
-                        imageItem.className = 'image-item';
-                        imageItem.innerHTML = `
-                            <h4>图片 ${index + 1}</h4>
-                            <img src="${imageUrl}" alt="生成的图片" onload="this.style.display='block'">
-                        `;
-                        imageContainer.appendChild(imageItem);
-                    });
-                    
-                    result.appendChild(imageContainer);
-                } else {
-                    // 显示错误信息
-                    result.innerHTML = `
-                        <div class="error">
-                            <h3>❌ 生成失败</h3>
-                            <p>${data.error}</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                result.innerHTML = `
-                    <div class="error">
-                        <h3>❌ 请求失败</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
-            } finally {
-                // 恢复按钮状态
-                generateBtn.disabled = false;
-                loading.style.display = 'none';
-            }
+       // 修改后的generateImage函数（替换原script部分）
+    async function generateImage() {
+        const prompt = document.getElementById('promptInput').value.trim();
+        const generateBtn = document.getElementById('generateBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+        
+        if (!prompt) {
+            alert('请输入图片描述');
+            return;
         }
         
-        // 支持回车键生成图片
-        document.getElementById('promptInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                generateImage();
+        // 显示加载状态
+        generateBtn.disabled = true;
+        loading.style.display = 'block';
+        result.innerHTML = '<div class="loading"><p>正在连接AI模型，可能需要20-30秒...</p></div>';
+        
+        try {
+            const startTime = Date.now();
+            const response = await fetch('/generate_image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            });
+            
+            const data = await response.json();
+            const elapsedTime = ((Date.now() - startTime)/1000).toFixed(1);
+            
+            // 统一处理图片URL（兼容PythonAnywhere免费/付费账户）
+            const processedImages = data.images.map(img => {
+                // 如果返回的是相对路径（如/static/xxx），自动补全域名
+                return img.startsWith('/') ? window.location.origin + img : img;
+            });
+
+            if (data.success) {
+                result.innerHTML = `
+                    <div class="success">
+                        <h3>✅ 生成成功（耗时 ${elapsedTime}秒）</h3>
+                        ${data.note ? `<p class="note">${data.note}</p>` : ''}
+                    </div>
+                    <div class="image-container" id="imageContainer"></div>
+                `;
+                
+                const container = document.getElementById('imageContainer');
+                processedImages.forEach((imgUrl, index) => {
+                    container.innerHTML += `
+                        <div class="image-item">
+                            <h4>版本 ${index + 1}</h4>
+                            <img src="${imgUrl}" 
+                                alt="AI生成图片" 
+                                onerror="this.onerror=null;this.src='/static/placeholder.png'"
+                                style="display: none;">
+                            <a href="${imgUrl}" download="ai-image-${index}.png" style="display: block; margin-top: 10px;">
+                                <button>下载图片</button>
+                            </a>
+                        </div>
+                    `;
+                });
+                
+                // 显示加载进度
+                let loadedCount = 0;
+                document.querySelectorAll('#imageContainer img').forEach(img => {
+                    img.onload = () => {
+                        img.style.display = 'block';
+                        if (++loadedCount === processedImages.length) {
+                            document.querySelector('.loading').innerHTML += 
+                                '<p>图片加载完成！</p>';
+                        }
+                    };
+                });
+            } else {
+                result.innerHTML = `
+                    <div class="error">
+                        <h3>❌ 生成失败</h3>
+                        <p>${data.error || '未知错误'}</p>
+                        ${data.status_code ? `<p>状态码: ${data.status_code}</p>` : ''}
+                    </div>
+                `;
             }
-        });
+        } catch (error) {
+            result.innerHTML = `
+                <div class="error">
+                    <h3>❌ 网络错误</h3>
+                    <p>${error.message}</p>
+                    <p>建议：检查网络连接或稍后重试</p>
+                </div>
+            `;
+        } finally {
+            generateBtn.disabled = false;
+            loading.style.display = 'none';
+        }
+    }
     </script>
 </body>
 </html> 
